@@ -52,6 +52,7 @@ struct LoginView: View {
 
 struct SettingsView: View {
     @Environment(Session.self) private var session
+    @State private var authorsText = ""
 
     var body: some View {
         NavigationStack {
@@ -64,10 +65,29 @@ struct SettingsView: View {
                     }
                 }
                 Section {
+                    TextField("e.g. claude-bot", text: $authorsText)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onSubmit(saveAuthors)
+                } header: {
+                    Text("Service accounts")
+                } footer: {
+                    Text("Usernames (comma-separated) whose open MRs also appear under “Mine”.")
+                }
+                Section {
                     Button("Sign out", role: .destructive) { session.signOut() }
                 }
             }
             .navigationTitle("Account")
+            .onAppear { authorsText = session.extraAuthors.joined(separator: ", ") }
+            .onDisappear(perform: saveAuthors)
         }
+    }
+
+    private func saveAuthors() {
+        session.extraAuthors = authorsText
+            .split(whereSeparator: { $0 == "," || $0 == " " })
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "@")) }
+            .filter { !$0.isEmpty }
     }
 }

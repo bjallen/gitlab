@@ -74,14 +74,25 @@ struct GitLabClient: Sendable {
         return try await call("GET", "/projects", q)
     }
 
-    func mergeRequests(scope: MRScope, userId: Int) async throws -> [MergeRequest] {
-        var q = ["state": "opened", "per_page": "50", "order_by": "updated_at", "sort": "desc"]
-        switch scope {
-        case .review: q["reviewer_id"] = String(userId); q["scope"] = "all"
-        case .assigned: q["scope"] = "assigned_to_me"
-        case .mine: q["scope"] = "created_by_me"
+    func mergeRequests(scope: MRScope, userId: Int, extraAuthors: [String] = []) async throws -> [MergeRequest] {
+        let base = ["state": "opened", "per_page": "50", "order_by": "updated_at", "sort": "desc"]
+        func fetch(_ extra: [String: String]) async throws -> [MergeRequest] {
+            try await call("GET", "/merge_requests", base.merging(extra) { $1 })
         }
-        return try await call("GET", "/merge_requests", q)
+        switch scope {
+        case .review: return try await fetch(["reviewer_id": String(userId), "scope": "all"])
+        case .assigned: return try await fetch(["scope": "assigned_to_me"])
+        case .mine:
+            // My own MRs plus those opened by configured service accounts (e.g. an AI agent).
+            var batches = [try await fetch(["scope": "created_by_me"])]
+            for name in extraAuthors {
+                batches.append(try await fetch(["scope": "all", "author_username": name]))
+            }
+            var seen = Set<Int>()
+            return batches.flatMap { $0 }
+                .filter { seen.insert($0.id).inserted }
+                .sorted { ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+        }
     }
 
     func mergeRequest(project: Int, iid: Int) async throws -> MergeRequest {

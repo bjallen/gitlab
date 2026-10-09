@@ -36,7 +36,7 @@ struct MRListView: View {
                 PipelineDetailView(projectId: $0.projectId, pipelineId: $0.pipelineId)
             }
             .refreshable { await fetch() }
-            .task(id: scope) { mrs = []; await fetch() }
+            .task(id: "\(scope.rawValue)|\(session.extraAuthors.joined(separator: ","))") { mrs = []; await fetch() }
         }
     }
 
@@ -46,7 +46,8 @@ struct MRListView: View {
         guard let client = session.client, let me = session.me else { return }
         loading = true; defer { loading = false }
         do {
-            mrs = try await client.mergeRequests(scope: scope, userId: me.id)
+            mrs = try await client.mergeRequests(scope: scope, userId: me.id,
+                                                 extraAuthors: session.extraAuthors)
             error = nil
         } catch is CancellationError {
         } catch let e as URLError where e.code == .cancelled {

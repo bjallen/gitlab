@@ -42,6 +42,11 @@ final class Session {
     private(set) var token: String?
     private(set) var me: User?
 
+    /// Usernames of service accounts (e.g. an AI agent) whose MRs appear under "Mine".
+    var extraAuthors: [String] = UserDefaults.standard.stringArray(forKey: "gitlab.extraAuthors") ?? [] {
+        didSet { UserDefaults.standard.set(extraAuthors, forKey: "gitlab.extraAuthors") }
+    }
+
     var isSignedIn: Bool { client != nil && me != nil }
 
     var client: GitLabClient? {
