@@ -7,7 +7,9 @@ struct GitLabMobileApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if session.isSignedIn { RootView() } else { LoginView() }
+                if session.isSignedIn { RootView() }
+                else if session.hasStoredToken { RestoreView() }
+                else { LoginView() }
             }
             .environment(session)
         }
@@ -24,5 +26,25 @@ struct RootView: View {
             SettingsView()
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
+    }
+}
+
+/// Shown when a token is stored but the server hasn't confirmed it yet (launching offline).
+struct RestoreView: View {
+    @Environment(Session.self) private var session
+
+    var body: some View {
+        VStack(spacing: 16) {
+            if session.isRestoring {
+                ProgressView("Connecting…")
+            } else {
+                ContentUnavailableView("Can't reach GitLab", systemImage: "wifi.slash",
+                                       description: Text(session.baseURL))
+                Button("Retry") { Task { await session.restore() } }
+                    .buttonStyle(.borderedProminent)
+                Button("Sign out", role: .destructive) { session.signOut() }
+            }
+        }
+        .padding()
     }
 }

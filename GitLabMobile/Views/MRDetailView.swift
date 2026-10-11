@@ -193,7 +193,7 @@ struct MRDetailView: View {
 
     private func reload() async {
         guard let client = session.client else { return }
-        do { try await refresh(client) }
+        do { try await refresh(client); error = nil }
         catch is CancellationError {}
         catch let e as URLError where e.code == .cancelled {}
         catch { self.error = error.localizedDescription }

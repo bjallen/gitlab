@@ -41,6 +41,8 @@ final class Session {
     var baseURL: String
     private(set) var token: String?
     private(set) var me: User?
+    private(set) var isRestoring = false
+    var hasStoredToken: Bool { token != nil }
 
     /// Usernames of service accounts (e.g. an AI agent) whose MRs appear under "Mine".
     var extraAuthors: [String] = UserDefaults.standard.stringArray(forKey: "gitlab.extraAuthors") ?? [] {
@@ -58,16 +60,20 @@ final class Session {
         baseURL = UserDefaults.standard.string(forKey: Self.baseURLKey) ?? "https://gitlab.com"
         token = Keychain.load()
         if token != nil {
-            // Restore the session optimistically; validate in the background.
+            isRestoring = true
             Task { await restore() }
         }
     }
 
-    private func restore() async {
+    /// Validates the stored token. A 401 signs out; any other failure (offline, server down)
+    /// keeps the token so the user can retry instead of being sent back to the login form.
+    func restore() async {
         guard let client else { return }
+        isRestoring = true
+        defer { isRestoring = false }
         do { me = try await client.currentUser() }
         catch let e as APIError where e.status == 401 { signOut() }
-        catch { /* offline: stay on login screen until a retry succeeds */ }
+        catch {}
     }
 
     func signIn(baseURL rawURL: String, token rawToken: String) async throws {

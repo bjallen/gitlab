@@ -12,6 +12,7 @@ struct PipelineDetailView: View {
     @State private var busy = false
     @State private var error: String?
     @State private var confirmAdvance = false
+    @State private var errorFromPoll = false   // only poll-originated errors are auto-cleared
 
     private struct Stage: Identifiable { let name: String; var jobs: [Job]; var id: String { name } }
 
@@ -162,9 +163,12 @@ struct PipelineDetailView: View {
             async let j = client.jobs(project: projectId, pipeline: pipelineId)
             pipeline = try await p
             jobs = try await j
+            if errorFromPoll { error = nil; errorFromPoll = false }
         } catch is CancellationError {
         } catch let e as URLError where e.code == .cancelled {
-        } catch { self.error = error.localizedDescription }
+        } catch {
+            if self.error == nil || errorFromPoll { self.error = error.localizedDescription; errorFromPoll = true }
+        }
     }
 
     static func format(_ seconds: Double) -> String {

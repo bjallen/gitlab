@@ -11,10 +11,10 @@ final class PinnedProjects {
         projects = data.flatMap { try? JSONDecoder().decode([Project].self, from: $0) } ?? []
     }
 
-    func contains(_ p: Project) -> Bool { projects.contains(p) }
+    func contains(_ p: Project) -> Bool { projects.contains { $0.id == p.id } }
 
     func toggle(_ p: Project) {
-        if let i = projects.firstIndex(of: p) { projects.remove(at: i) } else { projects.append(p) }
+        if let i = projects.firstIndex(where: { $0.id == p.id }) { projects.remove(at: i) } else { projects.append(p) }
         if let d = try? JSONEncoder().encode(projects) { UserDefaults.standard.set(d, forKey: Self.key) }
     }
 }

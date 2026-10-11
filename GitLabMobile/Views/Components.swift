@@ -45,12 +45,12 @@ struct ErrorBanner: View {
 
 /// Runs an async action, tracking busy state and surfacing errors.
 @MainActor
-func perform(busy: Binding<Bool>, error: Binding<String?>,
+func perform(busy: Binding<Bool>, error errorBinding: Binding<String?>,
              _ work: () async throws -> Void) async {
     busy.wrappedValue = true
-    error.wrappedValue = nil
+    errorBinding.wrappedValue = nil
     defer { busy.wrappedValue = false }
     do { try await work() }
     catch is CancellationError {}
-    catch { error.wrappedValue = error.localizedDescription }
+    catch { errorBinding.wrappedValue = error.localizedDescription }
 }
